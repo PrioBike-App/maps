@@ -689,6 +689,12 @@ final class MapboxMapController
           }
           break;
         }
+      case "map#updateUserLocation":
+        {
+          // TODO: Add support for updating the user location.
+          result.success(null);
+          break;
+        }
       case "map#updateContentInsets":
         {
           HashMap<String, Object> insets = call.argument("bounds");
