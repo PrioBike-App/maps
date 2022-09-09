@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:mapbox_gl/mapbox_gl.dart';
 
@@ -26,6 +29,17 @@ class FullMapState extends State<FullMap> {
 
   _onMapCreated(MapboxMapController controller) {
     mapController = controller;
+
+    // Run a timer that updates the location every second
+    Timer.periodic(const Duration(seconds: 1), (Timer t) {
+      if (mapController == null) return;
+      // Use a random user location in San Francisco.
+      final randomLat = 37.7749 + (Random().nextDouble() - 0.5) / 20;
+      final randomLng = -122.4194 + (Random().nextDouble() - 0.5) / 20;
+      final randomSpeed = Random().nextDouble() * 10;
+      final randomHeading = Random().nextDouble() * 360;
+      mapController!.updateUserLocation(lat: randomLat, lon: randomLng, speed: randomSpeed, heading: randomHeading);
+    });
   }
 
   _onStyleLoadedCallback() {
@@ -51,6 +65,10 @@ class FullMapState extends State<FullMap> {
         body: MapboxMap(
           styleString: isLight ? MapboxStyles.LIGHT : MapboxStyles.DARK,
           accessToken: MapsDemo.ACCESS_TOKEN,
+          myLocationEnabled: true,
+          onUserLocationUpdated: (location) {
+            print("User location updated: ${location.position}");
+          },
           onMapCreated: _onMapCreated,
           initialCameraPosition: const CameraPosition(target: LatLng(0.0, 0.0)),
           onStyleLoadedCallback: _onStyleLoadedCallback,
