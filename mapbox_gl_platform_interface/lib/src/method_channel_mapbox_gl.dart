@@ -240,6 +240,25 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
   }
 
   @override
+  Future<void> updateUserLocation({
+    required double lat, 
+    required double lon,
+    double? alt,
+    double? acc,
+    double? heading,
+    double? speed,
+  }) async {
+    await _channel.invokeMethod('map#updateUserLocation', <String, dynamic>{
+      'lat': lat,
+      'lon': lon,
+      if (alt != null) 'alt': alt,
+      if (acc != null) 'acc': acc,
+      if (heading != null) 'heading': heading,
+      if (speed != null) 'speed': speed,
+    });
+  }
+
+  @override
   Future<void> updateContentInsets(EdgeInsets insets, bool animated) async {
     await _channel.invokeMethod('map#updateContentInsets', <String, dynamic>{
       'bounds': <String, double>{

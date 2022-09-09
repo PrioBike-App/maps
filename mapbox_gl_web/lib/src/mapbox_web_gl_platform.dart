@@ -958,6 +958,19 @@ class MapboxWebGlPlatform extends MapboxGlPlatform
   }
 
   @override
+  Future<void> updateUserLocation({
+    required double lat, 
+    required double lon,
+    double? alt,
+    double? acc,
+    double? heading,
+    double? speed,
+  }) {
+    // TODO: implement updateUserLocation
+    throw UnimplementedError();
+  }
+
+  @override
   Future<void> updateContentInsets(EdgeInsets insets, bool animated) {
     // TODO: implement updateContentInsets
     throw UnimplementedError();

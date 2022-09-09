@@ -9,6 +9,7 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
     private var registrar: FlutterPluginRegistrar
     private var channel: FlutterMethodChannel?
 
+    private var locationManager = CustomLocationManager()
     private var mapView: MGLMapView
     private var isMapReady = false
     private var dragEnabled = true
@@ -45,6 +46,7 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
         }
         mapView = MGLMapView(frame: frame)
         mapView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        mapView.locationManager = locationManager
         self.registrar = registrar
 
         super.init()
@@ -172,6 +174,29 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
                 style.localizeLabels(into: nil)
             }
             result(nil)
+        case "map#updateUserLocation":
+            guard
+                let arguments = methodCall.arguments as? [String: Any],
+                let lat = arguments["lat"] as? CGFloat,
+                let lon = arguments["lon"] as? CGFloat,
+                let alt = arguments["alt"] as? CGFloat?,
+                let acc = arguments["acc"] as? CGFloat?,
+                let heading = arguments["heading"] as? CGFloat?,
+                let speed = arguments["speed"] as? CGFloat?
+            else {
+                locationManager.overriddenLocation = nil
+                return
+            }
+            
+            locationManager.overriddenLocation = CLLocation(
+                coordinate: .init(latitude: lat, longitude: lon),
+                altitude: alt ?? 0,
+                horizontalAccuracy: acc ?? -1,
+                verticalAccuracy: acc ?? -1,
+                course: heading ?? -1,
+                speed: speed ?? -1,
+                timestamp: Date()
+            )
         case "map#updateContentInsets":
             guard let arguments = methodCall.arguments as? [String: Any] else { return }
 
@@ -728,6 +753,11 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
     }
 
     private func updateMyLocationEnabled() {
+        if (myLocationEnabled) {
+            mapView.locationManager = locationManager
+        } else {
+            mapView.locationManager = nil
+        }
         mapView.showsUserLocation = myLocationEnabled
     }
 
