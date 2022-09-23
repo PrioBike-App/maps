@@ -12,57 +12,140 @@ import java.lang.UnsupportedOperationException;
 import java.util.List;
 import java.util.ArrayList;
 
+/**
+ * Custom location manager which wrapps the normally used location engine and thus
+ * allows to provide custom locations (eg for mocking).
+ */
 class CustomLocationManager implements LocationEngine {
+    /**
+     * The location engine that should be used if no custom locations get provided.
+     */
     private LocationEngine fallbackLocationEngine;
-    private Location customLocation;
-    private List<LocationEngineCallback<LocationEngineResult>> callbacks = new ArrayList<LocationEngineCallback<LocationEngineResult>>();
-    private boolean useFallbackLocationEngine = true;
 
+    /**
+     * The latest provided custom location. Also controls, whether the fallback location engine
+     * should be used (customLocation == null -> fallbackLocationEngine being used).
+     */
+    private Location customLocation;
+
+    /**
+     * A list for all the callbacks that get called if new locations are available (saved for the case when switches between the custom locations
+     * and fallback location engine happen, because then those need to be transfered).
+     */
+    private List<LocationEngineCallback<LocationEngineResult>> callbacks = new ArrayList<>();
+
+    /**
+     * A list for all the requests to location updates (saved for the case when switches between the custom locations
+     * and fallback location engine happen, because then those need to be transfered).
+     */
+    private List<LocationEngineRequest> requests = new ArrayList<>();
+
+    /**
+     * Constructor for the CustomLocationManager
+     * 
+     * @param fallbackLocationEngine The location engine that should be used when no custom locations get provided.
+     */
     CustomLocationManager(LocationEngine fallbackLocationEngine){
         this.fallbackLocationEngine = fallbackLocationEngine;
+        this.customLocation = null;
     }
 
+    /**
+    * Returns the last saved position.
+    *
+    * @param callback Callback that is getting called after the location is ready.
+    */
     public void getLastLocation(LocationEngineCallback<LocationEngineResult> callback){
-        if (customLocation != null && System.currentTimeMillis() - customLocation.getTime() < 4000) {
+        if (customLocation != null) {
+            // If a custom location was provided and should be used, return the custom location.
             callback.onSuccess(LocationEngineResult.create(customLocation));
         } else {
+            // Else forward it to the fallback location engine.
             fallbackLocationEngine.getLastLocation(callback);
         }
     }
 
+    /**
+    * This method can be used to provide custom locations.
+    *
+    * @param location Current custom location, if null then the fallback location engine is going to be used.
+    */
     public void overrideLastLocation(Location location){
-        if (this.useFallbackLocationEngine){
+        if (location == null && customLocation != null){
+            // Switch to fallback location engine, if null as a custom location gets provided.
+            // Add previous callbacks to fallback location engine.
+            for (int i = 0; i < this.callbacks.size(); i++) {
+                this.fallbackLocationEngine.requestLocationUpdates(this.requests.get(i), this.callbacks.get(i), null);
+            }
+        }
+
+        if (location != null && customLocation == null){
+            // Switch to custom locations.
+            // Remove previous callbacks from fallback location engine.
             for (int i = 0; i < this.callbacks.size(); i++) {
                 this.fallbackLocationEngine.removeLocationUpdates(this.callbacks.get(i));
             }
-            this.useFallbackLocationEngine = !this.useFallbackLocationEngine;
         }
 
+        // Save custom location as latest location.
         this.customLocation = location;
-        for (int i = 0; i < this.callbacks.size(); i++) {
-            this.callbacks.get(i).onSuccess(LocationEngineResult.create(customLocation));
-        }
-    }
 
-    public void removeLocationUpdates(LocationEngineCallback<LocationEngineResult> callback){
-        if (this.useFallbackLocationEngine){
+        if (this.customLocation != null){
+            // If the custom locations should be used, call all the callbacks with the new provided location.
             for (int i = 0; i < this.callbacks.size(); i++) {
-                this.fallbackLocationEngine.removeLocationUpdates(this.callbacks.get(i));
+                this.callbacks.get(i).onSuccess(LocationEngineResult.create(this.customLocation));
             }
         }
+    }
+
+    /**
+    * Use this method to unsubscribe from updates of this custom location manager.
+    *
+    * @param callback This callback won't get called again on future location updates.
+    */
+    public void removeLocationUpdates(LocationEngineCallback<LocationEngineResult> callback){
+        if (this.customLocation == null){
+            // If the fallback location engine was used forward the removal of the
+            // callback to the fallback location engine.
+            this.fallbackLocationEngine.removeLocationUpdates(callback);
+        }
+
+        final int indexOfCallback = this.callbacks.indexOf(callback);
         this.callbacks.remove(callback);
+        this.requests.remove(indexOfCallback);
     }
 
+    /**
+    * PendingIntents not supported for custom locations yet, therefore it is being forwarded to the fallback engine.
+    *
+    * @param pendingIntent 
+    */
     public void removeLocationUpdates(PendingIntent pendingIntent){
-        throw new java.lang.UnsupportedOperationException("Not supported.");
+        this.fallbackLocationEngine.removeLocationUpdates(pendingIntent);
     }
 
+    /**
+    * Use this method to subscribe for updates of this custom location manager.
+    *
+    * @param request    LocationEngineRequest for the updates.
+    * @param callback   This callback get's called on future location updates.
+    * @param looper     The Looper object whose message queue will be used to implement the callback mechanism, or null to invoke callbacks on the main thread (not supported for custom locations).
+    */
     public void requestLocationUpdates(LocationEngineRequest request, LocationEngineCallback<LocationEngineResult> callback, Looper looper){
         this.callbacks.add(callback);
-        this.fallbackLocationEngine.requestLocationUpdates(request, callback, looper);
+        if (this.customLocation == null){
+            // If the fallbackLocationEngine is used forward the request to it.
+            this.fallbackLocationEngine.requestLocationUpdates(request, callback, looper);
+        }
     }
 
+    /**
+    * PendingIntents not supported for custom locations yet, therefore it is being forwarded to the fallback engine.
+    *
+    * @param request
+    * @param pendingIntent 
+    */
     public void requestLocationUpdates(LocationEngineRequest request, PendingIntent pendingIntent){
-        throw new java.lang.UnsupportedOperationException("Not supported.");
+        this.fallbackLocationEngine.requestLocationUpdates(request, pendingIntent);
     }
 }

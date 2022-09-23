@@ -629,15 +629,21 @@ final class MapboxMapController
       case "map#updateUserLocation":
         {
           if (this.myLocationEnabled && locationComponent != null && locationEngine != null) {
-            Location newLocation = new Location("");
-            newLocation.setLatitude(call.argument("lat"));
-            newLocation.setLongitude(call.argument("lon")); 
-            newLocation.setAltitude(call.argument("alt")); 
-            newLocation.setAccuracy((float)(double)call.argument("acc"));
-            newLocation.setBearing((float)(double)call.argument("heading"));
-            newLocation.setSpeed((float)(double)call.argument("speed"));
-            newLocation.setTime(System.currentTimeMillis()); 
-            locationEngine.overrideLastLocation(newLocation);
+            // Check if a proper location is given, if not put null as argument to the "overrideLastLocation"
+            // function such that the fallback location engine is being used.
+            if (call.argument("lat") == null || call.argument("lon") == null){
+              locationEngine.overrideLastLocation(null);
+            } else {
+              Location newLocation = new Location("");
+              newLocation.setLatitude(call.argument("lat"));
+              newLocation.setLongitude(call.argument("lon")); 
+              if (call.argument("alt") != null) newLocation.setAltitude(call.argument("alt"));
+              if (call.argument("acc") != null) newLocation.setAccuracy((float)(double)call.argument("acc"));
+              if (call.argument("heading") != null) newLocation.setBearing((float)(double)call.argument("heading"));
+              if (call.argument("speed") != null)  newLocation.setSpeed((float)(double)call.argument("speed"));
+              newLocation.setTime(System.currentTimeMillis()); 
+              locationEngine.overrideLastLocation(newLocation);
+            }
           }
           result.success(null);
           break;
