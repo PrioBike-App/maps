@@ -15,6 +15,8 @@ import java.util.ArrayList;
 /**
  * Custom location manager which wrapps the normally used location engine and thus
  * allows to provide custom locations (eg for mocking).
+ * Implements: https://docs.mapbox.com/android/telemetry/api/libcore/3.1.0/com/mapbox/android/core/location/LocationEngine.html
+ * Another example of an implemenation of the LocationEngine interface: https://github.com/mapbox/mapbox-navigation-android/blob/main/libnavigation-core/src/main/java/com/mapbox/navigation/core/replay/ReplayLocationEngine.kt
  */
 class CustomLocationManager implements LocationEngine {
     /**
@@ -55,6 +57,7 @@ class CustomLocationManager implements LocationEngine {
     *
     * @param callback Callback that is getting called after the location is ready.
     */
+    @Override
     public void getLastLocation(LocationEngineCallback<LocationEngineResult> callback){
         if (customLocation != null) {
             // If a custom location was provided and should be used, return the custom location.
@@ -103,6 +106,7 @@ class CustomLocationManager implements LocationEngine {
     *
     * @param callback This callback won't get called again on future location updates.
     */
+    @Override
     public void removeLocationUpdates(LocationEngineCallback<LocationEngineResult> callback){
         if (this.customLocation == null){
             // If the fallback location engine was used forward the removal of the
@@ -120,6 +124,7 @@ class CustomLocationManager implements LocationEngine {
     *
     * @param pendingIntent 
     */
+    @Override
     public void removeLocationUpdates(PendingIntent pendingIntent){
         this.fallbackLocationEngine.removeLocationUpdates(pendingIntent);
     }
@@ -131,6 +136,7 @@ class CustomLocationManager implements LocationEngine {
     * @param callback   This callback get's called on future location updates.
     * @param looper     The Looper object whose message queue will be used to implement the callback mechanism, or null to invoke callbacks on the main thread (not supported for custom locations).
     */
+    @Override
     public void requestLocationUpdates(LocationEngineRequest request, LocationEngineCallback<LocationEngineResult> callback, Looper looper){
         this.callbacks.add(callback);
         if (this.customLocation == null){
@@ -145,6 +151,7 @@ class CustomLocationManager implements LocationEngine {
     * @param request
     * @param pendingIntent 
     */
+    @Override
     public void requestLocationUpdates(LocationEngineRequest request, PendingIntent pendingIntent){
         this.fallbackLocationEngine.requestLocationUpdates(request, pendingIntent);
     }
