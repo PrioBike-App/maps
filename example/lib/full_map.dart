@@ -30,15 +30,15 @@ class FullMapState extends State<FullMap> {
   _onMapCreated(MapboxMapController controller) {
     mapController = controller;
 
+    // Use a random user location in San Francisco.
+    var heading = 45.0;
+    var lat = 37.790;
+    var lng = -122.410;
+    var speed = 0.0;
     // Run a timer that updates the location every second
     Timer.periodic(const Duration(seconds: 1), (Timer t) {
       if (mapController == null) return;
-      // Use a random user location in San Francisco.
-      final randomLat = 37.7749 + (Random().nextDouble() - 0.5) / 20;
-      final randomLng = -122.4194 + (Random().nextDouble() - 0.5) / 20;
-      final randomSpeed = Random().nextDouble() * 10;
-      final randomHeading = Random().nextDouble() * 360;
-      mapController!.updateUserLocation(lat: randomLat, lon: randomLng, speed: randomSpeed, heading: randomHeading);
+      mapController!.updateUserLocation(lat: lat, lon: lng, speed: speed, heading: heading);
     });
   }
 
@@ -66,12 +66,16 @@ class FullMapState extends State<FullMap> {
           styleString: isLight ? MapboxStyles.LIGHT : MapboxStyles.DARK,
           accessToken: MapsDemo.ACCESS_TOKEN,
           myLocationEnabled: true,
+          myLocationRenderMode: MyLocationRenderMode.COMPASS,
           onUserLocationUpdated: (location) {
             print("User location updated: ${location.position}");
           },
           onMapCreated: _onMapCreated,
-          initialCameraPosition: const CameraPosition(target: LatLng(0.0, 0.0)),
+          // Focus on San Francisco
+          initialCameraPosition: const CameraPosition(target: LatLng(37.7749, -122.4194), zoom: 11.0),
           onStyleLoadedCallback: _onStyleLoadedCallback,
+          puckImage: "assets/position.png",
+          puckSize: 128,
         ));
   }
 }
