@@ -9,6 +9,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.res.AssetFileDescriptor;
+import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.PointF;
@@ -37,7 +38,6 @@ import com.mapbox.android.gestures.MoveGestureDetector;
 import com.mapbox.android.telemetry.TelemetryEnabler;
 import com.mapbox.geojson.Feature;
 import com.mapbox.geojson.FeatureCollection;
-import com.mapbox.geojson.Point;
 import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.camera.CameraUpdate;
@@ -59,8 +59,6 @@ import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.mapbox.mapboxsdk.maps.Style;
 import com.mapbox.mapboxsdk.offline.OfflineManager;
 import com.mapbox.mapboxsdk.plugins.localization.LocalizationPlugin;
-import com.mapbox.mapboxsdk.snapshotter.MapSnapshotter;
-import com.mapbox.mapboxsdk.storage.FileSource;
 import com.mapbox.mapboxsdk.style.expressions.Expression;
 import com.mapbox.mapboxsdk.style.layers.CircleLayer;
 import com.mapbox.mapboxsdk.style.layers.FillExtrusionLayer;
@@ -80,6 +78,7 @@ import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.platform.PlatformView;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.FileDescriptor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -88,7 +87,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 
 /** Controller of a single MapboxMaps MapView instance. */
 @SuppressLint("MissingPermission")
@@ -113,9 +111,6 @@ final class MapboxMapController
   private final float density;
   private final Context context;
   private final String styleStringInitial;
-  private final Set<String> interactiveFeatureLayerIds;
-  private final Map<String, FeatureCollection> addedFeaturesByLayer;
-  private final Map<String, MapSnapshotter> mSnapshotterMap;
   private MapView mapView;
   private MapboxMap mapboxMap;
   private boolean trackCameraPosition = false;
@@ -132,8 +127,16 @@ final class MapboxMapController
   private Style style;
   private Feature draggedFeature;
   private AndroidGesturesManager androidGesturesManager;
+
   private LatLng dragOrigin;
   private LatLng dragPrevious;
+
+  private Set<String> interactiveFeatureLayerIds;
+  private Map<String, FeatureCollection> addedFeaturesByLayer;
+
+  private String puckImage;
+  private Double puckSize;
+
   private LatLngBounds bounds = null;
   Style.OnStyleLoaded onStyleLoadedCallback =
       new Style.OnStyleLoaded() {
@@ -177,7 +180,7 @@ final class MapboxMapController
     if (dragEnabled) {
       this.androidGesturesManager = new AndroidGesturesManager(this.mapView.getContext(), false);
     }
-    this.mSnapshotterMap = new HashMap<>();
+
     methodChannel = new MethodChannel(messenger, "plugins.flutter.io/mapbox_maps_" + id);
     methodChannel.setMethodCallHandler(this);
   }
@@ -324,7 +327,45 @@ final class MapboxMapController
     if (lastLayerId != null) {
       optionsBuilder.layerAbove(lastLayerId);
     }
+
+    if (puckImage != null) {
+      final double size = puckSize == null ? 128 : puckSize;
+      final Bitmap image = addImageStyle(puckImage);
+      // Find out the scaling factor for the image.
+      final double pixelDensity = context.getResources().getDisplayMetrics().density;
+      final double scale = (size / image.getWidth()) * pixelDensity;
+      optionsBuilder.maxZoomIconScale((float) scale);
+      optionsBuilder.minZoomIconScale((float) scale);
+      // Use the bearing layer since that rotates with the user heading.
+      if (image != null) optionsBuilder.bearingName(puckImage);
+    }
+
     return optionsBuilder.build();
+  }
+
+  private Bitmap addImageStyle(String assetString) {
+    if (assetString == null) return null;
+    final String assetFilePath = MapboxMapsPlugin.flutterAssets.getAssetFilePathByName(assetString);
+
+    InputStream imgFile;
+    try{
+      imgFile = mapView.getContext().getAssets().open(assetFilePath);
+    }
+    catch(IOException ex){
+      System.out.println (ex.toString());
+      System.out.println("Could not find file " + assetFilePath);
+      return null;
+    }
+    
+    Bitmap bitmap = null;
+    if (imgFile != null) bitmap = BitmapFactory.decodeStream(imgFile);
+
+    if (bitmap != null) {
+      mapboxMap.getStyle().addImage(assetString, bitmap);
+      return bitmap;
+    } else {
+      return null;
+    }
   }
 
   private void onUserLocationUpdate(Location location) {
@@ -1349,81 +1390,6 @@ final class MapboxMapController
           result.success(null);
           break;
         }
-      case "snapshot#takeSnapshot":
-        {
-          FileSource.getInstance(context).activate();
-          MapSnapshotter.Options snapShotOptions =
-              new MapSnapshotter.Options(
-                  (int) call.argument("width"), (int) call.argument("height"));
-
-          snapShotOptions.withLogo((boolean) call.argument("withLogo"));
-          Style.Builder styleBuilder = new Style.Builder();
-          if (call.hasArgument("styleUri")) {
-            styleBuilder.fromUri((String) call.argument("styleUri"));
-          } else if (call.hasArgument("styleJson")) {
-            styleBuilder.fromJson((String) call.argument("styleJson"));
-          } else {
-            if (style == null) {
-              result.error(
-                  "STYLE IS NULL",
-                  "The style is null. Has onStyleLoaded() already been invoked?",
-                  null);
-            }
-            styleBuilder.fromUri(style.getUri());
-          }
-          snapShotOptions.withStyleBuilder(styleBuilder);
-          if (call.hasArgument("bounds")) {
-            FeatureCollection bounds = FeatureCollection.fromJson((String) call.argument("bounds"));
-            snapShotOptions.withRegion(GeoJSONUtils.toLatLngBounds(bounds));
-          } else if (call.hasArgument("centerCoordinate")) {
-            Feature centerPoint = Feature.fromJson((String) call.argument("centerCoordinate"));
-            CameraPosition cameraPosition =
-                new CameraPosition.Builder()
-                    .target(GeoJSONUtils.toLatLng((Point) centerPoint.geometry()))
-                    .tilt((double) call.argument("pitch"))
-                    .bearing((double) call.argument("heading"))
-                    .zoom((double) call.argument("zoomLevel"))
-                    .build();
-            snapShotOptions.withCameraPosition(cameraPosition);
-          } else {
-            snapShotOptions.withRegion(mapboxMap.getProjection().getVisibleRegion().latLngBounds);
-          }
-
-          final MapSnapshotter snapshotter = new MapSnapshotter(context, snapShotOptions);
-          final String snapshotterID = UUID.randomUUID().toString();
-          mSnapshotterMap.put(snapshotterID, snapshotter);
-
-          snapshotter.start(
-              snapshot -> {
-                Bitmap bitmap = snapshot.getBitmap();
-
-                String result1;
-                if ((boolean) call.argument("writeToDisk")) {
-                  result1 = BitmapUtils.createTempFile(context, bitmap);
-                } else {
-                  result1 = BitmapUtils.createBase64(bitmap);
-                }
-
-                if (result1 == null) {
-                  result.error(
-                      "NO_RESULT",
-                      "Could not generate snapshot, please check Android logs for more info.",
-                      null);
-                  return;
-                }
-
-                result.success(result1);
-                mSnapshotterMap.remove(snapshotterID);
-              },
-              new MapSnapshotter.ErrorHandler() {
-                @Override
-                public void onError(String error) {
-                  result.error("SNAPSHOT_ERROR", error, null);
-                  mSnapshotterMap.remove(snapshotterID);
-                }
-              });
-          break;
-        }
       default:
         result.notImplemented();
     }
@@ -1795,6 +1761,16 @@ final class MapboxMapController
         mapboxMap.getUiSettings().setAttributionMargins(0, 0, x, y);
         break;
     }
+  }
+
+  @Override
+  public void setPuckImage(String puckImage) {
+    this.puckImage = puckImage;
+  }
+
+  @Override
+  public void setPuckSize(Double puckSize) {
+    this.puckSize = puckSize;
   }
 
   private void updateMyLocationEnabled() {

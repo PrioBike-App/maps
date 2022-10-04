@@ -75,7 +75,6 @@ class MapboxWebGlPlatform extends MapboxGlPlatform
           zoom: camera['zoom'],
           bearing: camera['bearing'],
           pitch: camera['tilt'],
-          preserveDrawingBuffer: true,
         ),
       );
       _map.on('load', _onStyleLoaded);
@@ -1034,24 +1033,6 @@ class MapboxWebGlPlatform extends MapboxGlPlatform
         source.setData(newData);
       }
     }
-  }
-
-  @override
-  Future<String> takeSnapshot(SnapshotOptions snapshotOptions) async {
-    if (snapshotOptions.styleUri != null || snapshotOptions.styleJson != null) {
-      throw UnsupportedError("style option is not supported");
-    }
-    if (snapshotOptions.bounds != null) {
-      throw UnsupportedError("bounds option is not supported");
-    }
-    if (snapshotOptions.centerCoordinate != null ||
-        snapshotOptions.zoomLevel != null ||
-        snapshotOptions.pitch != 0 ||
-        snapshotOptions.heading != 0) {
-      throw UnsupportedError("camera posision option is not supported");
-    }
-    final base64String = await _map.getCanvas().toDataUrl('image/jpeg');
-    return base64String;
   }
 
   @override
