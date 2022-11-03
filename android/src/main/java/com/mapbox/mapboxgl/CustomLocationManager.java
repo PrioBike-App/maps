@@ -139,6 +139,7 @@ class CustomLocationManager implements LocationEngine {
     @Override
     public void requestLocationUpdates(LocationEngineRequest request, LocationEngineCallback<LocationEngineResult> callback, Looper looper){
         this.callbacks.add(callback);
+        this.requests.add(request);
         if (this.customLocation == null){
             // If the fallbackLocationEngine is used forward the request to it.
             this.fallbackLocationEngine.requestLocationUpdates(request, callback, looper);
