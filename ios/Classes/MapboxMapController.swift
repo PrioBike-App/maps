@@ -1099,6 +1099,10 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
         enableInteraction: Bool,
         properties: [String: String]
     ) -> Result<Void, MethodCallError> {
+        // Check if the layer already exists and remove it if so.
+        if let existingLayer = mapView.style?.layer(withIdentifier: layerId) {
+            mapView.style?.removeLayer(existingLayer)
+        }
         if let style = mapView.style {
             if let source = style.source(withIdentifier: sourceId) {
                 let layer = MGLSymbolStyleLayer(identifier: layerId, source: source)
@@ -1144,6 +1148,10 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
         enableInteraction: Bool,
         properties: [String: String]
     ) -> Result<Void, MethodCallError> {
+        // Check if the layer already exists and remove it if so.
+        if let existingLayer = mapView.style?.layer(withIdentifier: layerId) {
+            mapView.style?.removeLayer(existingLayer)
+        }
         if let style = mapView.style {
             if let source = style.source(withIdentifier: sourceId) {
                 let layer = MGLLineStyleLayer(identifier: layerId, source: source)
@@ -1186,6 +1194,10 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
         enableInteraction: Bool,
         properties: [String: String]
     ) -> Result<Void, MethodCallError> {
+        // Check if the layer already exists and remove it if so.
+        if let existingLayer = mapView.style?.layer(withIdentifier: layerId) {
+            mapView.style?.removeLayer(existingLayer)
+        }
         if let style = mapView.style {
             if let source = style.source(withIdentifier: sourceId) {
                 let layer = MGLFillStyleLayer(identifier: layerId, source: source)
@@ -1273,6 +1285,10 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
         enableInteraction: Bool,
         properties: [String: String]
     ) -> Result<Void, MethodCallError> {
+        // Check if the layer already exists and remove it if so.
+        if let existingLayer = mapView.style?.layer(withIdentifier: layerId) {
+            mapView.style?.removeLayer(existingLayer)
+        }
         if let style = mapView.style {
             if let source = style.source(withIdentifier: sourceId) {
                 let layer = MGLCircleStyleLayer(identifier: layerId, source: source)
@@ -1338,6 +1354,10 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
         maximumZoomLevel: Double?,
         properties: [String: String]
     ) {
+        // Check if the layer already exists and remove it if so.
+        if let existingLayer = mapView.style?.layer(withIdentifier: layerId) {
+            mapView.style?.removeLayer(existingLayer)
+        }
         if let style = mapView.style {
             if let source = style.source(withIdentifier: sourceId) {
                 let layer = MGLHillshadeStyleLayer(identifier: layerId, source: source)
@@ -1398,6 +1418,10 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
         maximumZoomLevel: Double?,
         properties: [String: String]
     ) {
+        // Check if the layer already exists and remove it if so.
+        if let existingLayer = mapView.style?.layer(withIdentifier: layerId) {
+            mapView.style?.removeLayer(existingLayer)
+        }
         if let style = mapView.style {
             if let source = style.source(withIdentifier: sourceId) {
                 let layer = MGLRasterStyleLayer(identifier: layerId, source: source)
