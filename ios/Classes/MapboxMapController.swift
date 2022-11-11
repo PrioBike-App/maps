@@ -1496,10 +1496,17 @@ class MapboxMapController: NSObject, FlutterPlatformView, MGLMapViewDelegate, Ma
                 data: geojson.data(using: .utf8)!,
                 encoding: String.Encoding.utf8.rawValue
             )
-            let source = MGLShapeSource(identifier: sourceId, shape: parsed, options: [:])
-            addedShapesByLayer[sourceId] = parsed
-            mapView.style?.addSource(source)
-            print(source)
+            if let source = mapView.style?.source(withIdentifier: sourceId) as? MGLShapeSource {
+                addedShapesByLayer[sourceId] = parsed
+                source.shape = parsed
+                print("Updated source \(sourceId)")
+            } else {
+                // Create a new source
+                let source = MGLShapeSource(identifier: sourceId, shape: parsed, options: [:])
+                addedShapesByLayer[sourceId] = parsed
+                mapView.style?.addSource(source)
+                print("Added source \(sourceId)")
+            }
         } catch {}
     }
 
