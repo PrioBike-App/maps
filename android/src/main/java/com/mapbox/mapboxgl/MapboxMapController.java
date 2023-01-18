@@ -393,24 +393,36 @@ final class MapboxMapController
     methodChannel.invokeMethod("map#onUserLocationUpdated", arguments);
   }
 
-  private void addGeoJsonSource(String sourceName, String source) {
-    FeatureCollection featureCollection = FeatureCollection.fromJson(source);
-    GeoJsonSource geoJsonSource = new GeoJsonSource(sourceName, featureCollection);
-    addedFeaturesByLayer.put(sourceName, featureCollection);
-
-    style.addSource(geoJsonSource);
+  private void addGeoJsonSource(String sourceName, String geojson) {
+    // Parse the GeoJSON into a FeatureCollection
+    FeatureCollection featureCollection = FeatureCollection.fromJson(geojson);
+    GeoJsonSource geoJsonSource = style.getSourceAs(sourceName);
+    if (geoJsonSource != null) {
+      // If the source already exists, update it.
+      addedFeaturesByLayer.put(sourceName, featureCollection);
+      geoJsonSource.setGeoJson(featureCollection);
+    } else {
+      // If the source doesn't exist, create it.
+      geoJsonSource = new GeoJsonSource(sourceName, featureCollection);
+      addedFeaturesByLayer.put(sourceName, featureCollection);
+      style.addSource(geoJsonSource);
+    }
   }
 
   private void setGeoJsonSource(String sourceName, String geojson) {
+    // Parse the GeoJSON into a FeatureCollection
     FeatureCollection featureCollection = FeatureCollection.fromJson(geojson);
-    // Try to get the source, if it doesn't exist, create it.
     GeoJsonSource geoJsonSource = style.getSourceAs(sourceName);
-    if (geoJsonSource == null) {
+    if (geoJsonSource != null) {
+      // If the source already exists, update it.
+      addedFeaturesByLayer.put(sourceName, featureCollection);
+      geoJsonSource.setGeoJson(featureCollection);
+    } else {
+      // If the source doesn't exist, create it.
       geoJsonSource = new GeoJsonSource(sourceName, featureCollection);
+      addedFeaturesByLayer.put(sourceName, featureCollection);
+      style.addSource(geoJsonSource);
     }
-    addedFeaturesByLayer.put(sourceName, featureCollection);
-
-    geoJsonSource.setGeoJson(featureCollection);
   }
 
   private void setGeoJsonFeature(String sourceName, String geojsonFeature) {
